@@ -124,3 +124,17 @@ moving state each tick and blend it before step 2.
 Movement probe (P1 holding right): camera anchor 0x80119894 coord.t.z follows
 the moving character (+7/tick); bone work matrices from 0x80125234 (stride
 0x50) carry world positions; more decoding of the player object needed.
+
+## Player records and stage 2b blending
+
+Players: 0x80124EB0 + 0xA08 * n (n = 0, 1). World position int32 x/y/z at
++0x888 / +0x88C / +0x890 (pad 1 walking: z +104/tick). The camera follow at
+0x8002BE20 anchors camera coordinate 0x801197E0 + 0xB4 * n from it
+(coord.t = pos + (-0x64, -0x180, 0)).
+
+Stage 2b blends both player positions and both camera anchors linearly from
+the previous tick to the current one before the redraw (teleport guard 2000
+units/tick). Forced phases 0.25 / 0.5 / 0.75 (`TG_TEST3=1`) show the walking
+character and the camera advancing evenly between the game's frames; passes
+282, aborts 0. Not yet blended: facing/rotation, animation pose,
+projectiles, traps and effects.

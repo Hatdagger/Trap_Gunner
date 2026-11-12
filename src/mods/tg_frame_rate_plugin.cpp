@@ -87,7 +87,36 @@ constexpr uint32_t OTs[4] = {0x80119948, 0x80119970, 0x80119998, 0x80119A10};
 constexpr uint32_t DrawTasks[] = {6, 10, 11, 12, 13, 14};
 constexpr uint32_t SubmitStart = 0x80014CEC, SubmitEnd = 0x80014F48;
 
-int replay_pass(CPUState* cpu, void*, uint32_t) {
+// Moving state blended between ticks: each player's world position and the
+// camera anchor that follows it (0x8002BE20).
+constexpr uint32_t Players = 0x80124EB0, PlayerStride = 0xA08, PlayerPos = 0x888;
+constexpr uint32_t CamCoords = 0x801197E0, CamStride = 0xB4, CamT = 0x18;
+constexpr int32_t TeleportLimit = 2000;   // per tick, game units
+struct Snap { bool valid = false; int32_t v[4][3]; };
+Snap prev, cur;
+uint32_t addr_of(int k, int i) {
+    return k < 2 ? Players + PlayerStride * k + PlayerPos + 4 * i
+                 : CamCoords + CamStride * (k - 2) + CamT + 4 * i;
+}
+void capture(Snap& s) {
+    for (int k = 0; k < 4; ++k) for (int i = 0; i < 3; ++i) s.v[k][i] = int32_t(rd(addr_of(k, i)));
+    s.valid = true;
+}
+void apply_blend(uint32_t alpha_q16) {
+    if (!prev.valid || !cur.valid) return;
+    for (int k = 0; k < 4; ++k) {
+        bool jump = false;
+        for (int i = 0; i < 3; ++i) if (std::abs(cur.v[k][i] - prev.v[k][i]) > TeleportLimit) jump = true;
+        if (jump) { psx_mod_counter_add("tg.fr.snap", 1); continue; }
+        for (int i = 0; i < 3; ++i) {
+            const int64_t a = prev.v[k][i], b = cur.v[k][i];
+            psx_mod_write_word(addr_of(k, i), uint32_t(int32_t(a + ((b - a) * int64_t(alpha_q16) >> 16))));
+        }
+    }
+}
+
+int replay_pass(CPUState* cpu, void*, uint32_t alpha_q16) {
+    if (!std::getenv("TG_NO_BLEND")) apply_blend(alpha_q16);
     const uint32_t db = psx_mod_read_byte(GP + 0x934) & 1;
     call(cpu, GsSetWorkBase, rd(WorkBases + 4 * db));
     for (uint32_t ot : OTs) call(cpu, ClearOT, 0, 0, ot + 0x14 * db);
@@ -115,14 +144,18 @@ int replay_pass(CPUState* cpu, void*, uint32_t) {
 void on_vsync(CPUState* cpu, uint32_t) {
     if (std::getenv("TG_REPLAY")) {
         if (g_psx_render_pass_active || cpu->gpr[31] != LoopVSyncRet) return;
+        prev = cur; capture(cur);
         uint32_t phases[8];
-        const uint32_t n = psx_mod_render_pass_plan(2, 0, phases, 8);
+        static const uint32_t shown_after = std::getenv("TG_D") ? uint32_t(std::atoi(std::getenv("TG_D"))) : 1;
+        const uint32_t n = psx_mod_render_pass_plan(2, shown_after, phases, 8);
         if (!n) { psx_mod_counter_add("tg.fr.plan_empty", 1); return; }
         const uint32_t db = rh(DbIndex) & 1;
         PSXModRenderPass rect{};
         rect.struct_size = sizeof rect;
         rect.x = rh(DispX + 2 * db); rect.y = rh(DispY + 2 * db); rect.w = 512; rect.h = 240;
-        for (uint32_t i = 0; i < n; ++i) {
+        uint32_t m = n;
+        if (std::getenv("TG_TEST3")) { phases[0] = 16384; phases[1] = 32768; phases[2] = 49152; m = 3; }
+        for (uint32_t i = 0; i < m; ++i) {
             rect.alpha_q16 = phases[i];
             psx_mod_counter_add(psx_mod_render_pass(cpu, &rect, replay_pass, nullptr)
                                 ? "tg.fr.passes" : "tg.fr.pass_failed", 1);
