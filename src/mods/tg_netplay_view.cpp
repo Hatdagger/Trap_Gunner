@@ -100,6 +100,22 @@ int wrap_hud(CPUState* cpu, uint32_t address) {
     return 1;   // the call ran with the original body
 }
 
+// Camera states (setter 0x80031014(player, state), state at camera +0x78,
+// routines table 0x800CC93C): 3 = follow with a dead zone and a lean toward
+// the opponent (the WIDE human camera; 4 settles into it), 2 = fixed offset
+// centred on the player (the WIDE CPU camera, never seen offline). Online both
+// players are seen, so both get the centred camera: the normal follow states
+// 3 and 4 become 2 during a WIDE 2-human battle. Other states (events) pass.
+constexpr uint32_t SetCamState = 0x80031014;
+void on_set_cam_state(CPUState* cpu, uint32_t) {
+    if (g_psx_render_pass_active) return;
+    const uint32_t state = cpu->gpr[5];
+    if ((state != 3 && state != 4) || rb(LayoutByte) != 0) return;
+    if (rb(GP + 0xC) != 1 || rb(GP + 0xD) != 1) return;   // two humans
+    cpu->gpr[5] = 2;
+    psx_mod_counter_add("tg.np.cam_centred", 1);
+}
+
 int draw_own_view(CPUState* cpu, void* user, uint32_t) {
     const int seat = *static_cast<int*>(user);
     wb(ViewPlayers, uint8_t(seat));
@@ -147,5 +163,6 @@ void on_vsync(CPUState* cpu, uint32_t) {
 PSX_MOD_CONSTRUCTOR(tg_register_netplay_view) {
     psx_game_register_netplay_function_entry(LoadTim, on_load_tim);
     psx_game_register_netplay_function_entry(VSyncFn, on_vsync);
+    psx_game_register_netplay_function_entry(SetCamState, on_set_cam_state);
     for (uint32_t fn : HudPanelFns) psx_game_register_netplay_function_filter(fn, wrap_hud);
 }

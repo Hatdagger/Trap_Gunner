@@ -203,3 +203,13 @@ so the own view now runs task 3 before the draw tasks (in the sandbox; its
 logic is discarded, the image may lead by up to one tick). Running tasks 0, 1,
 7, 8, 9, 15, 16 in a pass hit the watchdog: never replay those.
 Verified (rollback, 0 desync): each window shows only its own player's preview.
+
+### Centred camera for both players online (v0.0.7)
+
+Camera state per player at camera +0x78 (setter 0x80031014(player, state),
+routine pairs at 0x800CC93C). Native one-player WIDE (VS COM, checked here):
+human camera state 4 -> 3 (follow with a dead zone, starts leaning ~585 units
+toward the opponent), CPU camera state 2 (fixed offset (-100, -384, 0),
+centred). Online both players are seen, so a netplay entry hook on the setter
+turns states 3 and 4 into 2 in a WIDE 2-human battle. Verified: both cameras
+state 2 and centred through movement, rollback, 0 desync.

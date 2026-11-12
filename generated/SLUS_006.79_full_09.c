@@ -26338,6 +26338,8 @@ void func_80031014(CPUState* cpu)
     psx_cyc_bb_defer_begin();
 #endif
     debug_server_log_call_entry(0x80031014u);
+    if (psx_mod_function_entry(cpu, 0x80031014u)) return;  /* trusted opt-in game-mod hook */
+    if (psx_mod_try_function_replacement(cpu, 0x80031014u)) return;
     /* Address: 0x80031014, Size: 48 bytes, Blocks: 1 */
 
 block_80031014:
