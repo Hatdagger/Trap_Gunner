@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Trap_Gunner
+Exec=Trap_Gunner
+Icon=trapgunner
+Categories=Game;
+Terminal=false
