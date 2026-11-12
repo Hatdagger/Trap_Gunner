@@ -138,3 +138,21 @@ units/tick). Forced phases 0.25 / 0.5 / 0.75 (`TG_TEST3=1`) show the walking
 character and the camera advancing evenly between the game's frames; passes
 282, aborts 0. Not yet blended: facing/rotation, animation pose,
 projectiles, traps and effects.
+
+## Per-player WIDE online: design (after R4's Link Battle)
+
+Reference: tetrisgm/RidgeRacerType4Recomp docs/ONLINE_BATTLE.md and
+src/mods/r4_link_netplay.c. Every peer runs and draws the same stock split
+frame (RAM, VRAM, digests identical). At the battle VSync each peer redraws
+its own seat's view inside `psx_mod_render_local_view` (sandboxed, presenter
+only). Hooks must be registered with `psx_game_register_netplay_function_entry`
+(package mods are off in netplay).
+
+Own-view draw (prototype, `TG_OWN_VIEW=<seat>` with `TG_TEST3=1` offline):
+upload the WIDE HUD TIM (0x800151E0 loads a TIM to VRAM: 0x800F541C wide,
+0x800F945C split), layout byte gp+0xA = 0, view player bytes 0x80108A9C/D =
+(seat, other), then the draw tasks and the submit span. First result: the
+world draws in the wide layout and the WIDE top HUD bar appears, but split-HUD
+elements are still drawn and the seat swap has no effect yet (both seats show
+the same image). Next: find what else the battle setup derives from the layout
+(0x80028D44..: HUD state per layout) and the real per-view player index.

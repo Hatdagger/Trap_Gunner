@@ -117,8 +117,23 @@ void apply_blend(uint32_t alpha_q16) {
     }
 }
 
+// Own WIDE view for one player (prototype): the game's single-player layout
+// drawn for `seat`. Layout byte gp+0xA = 0 (wide), the WIDE HUD art uploaded
+// as battle setup does (0x800151E0 with TIM 0x800F541C), and view 0's player
+// index (0x80108A9C) set to the seat.
+constexpr uint32_t LayoutByte = GP + 0xA, ViewPlayers = 0x80108A9C;
+constexpr uint32_t LoadTim = 0x800151E0, WideHudTim = 0x800F541C;
+int own_view_seat = -1;
+
 int replay_pass(CPUState* cpu, void*, uint32_t alpha_q16) {
     if (!std::getenv("TG_NO_BLEND")) apply_blend(alpha_q16);
+    if (own_view_seat >= 0) {
+        call(cpu, LoadTim, WideHudTim);
+        psx_mod_write_word(LayoutByte & ~3u, (rd(LayoutByte & ~3u) & ~0x00FF0000u));
+        const uint32_t vp = rd(ViewPlayers & ~3u);
+        const uint32_t other = uint32_t(own_view_seat ^ 1);
+        psx_mod_write_word(ViewPlayers & ~3u, (vp & ~0xFFFFu) | uint32_t(own_view_seat) | (other << 8));
+    }
     const uint32_t db = psx_mod_read_byte(GP + 0x934) & 1;
     call(cpu, GsSetWorkBase, rd(WorkBases + 4 * db));
     for (uint32_t ot : OTs) call(cpu, ClearOT, 0, 0, ot + 0x14 * db);
@@ -155,6 +170,7 @@ void on_vsync(CPUState* cpu, uint32_t) {
         PSXModRenderPass rect{};
         rect.struct_size = sizeof rect;
         rect.x = rh(DispX + 2 * db); rect.y = rh(DispY + 2 * db); rect.w = 512; rect.h = 240;
+        own_view_seat = std::getenv("TG_OWN_VIEW") ? std::atoi(std::getenv("TG_OWN_VIEW")) : -1;
         uint32_t m = n;
         if (std::getenv("TG_TEST3")) { phases[0] = 16384; phases[1] = 32768; phases[2] = 49152; m = 3; }
         for (uint32_t i = 0; i < m; ++i) {
