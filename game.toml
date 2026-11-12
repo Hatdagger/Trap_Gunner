@@ -2,11 +2,11 @@
 # Review before shipping. Runtime quirks / overlay seeds still need hand work.
 
 [game]
-name = "Trap_Gunner"
+name = "Trap Gunner"
 id = "SLUS-00679"
 players = 2
 exe = "disc/SLUS_006.79"
-disc = "/home/claude/private/inputs/disc-1/Trap Gunner (USA).cue"
+disc = "inputs/disc-1/Trap Gunner (USA).cue"
 load_address = "0x80010000"
 entry_pc = "0x8009E1BC"
 text_size = "0x000F9800"
@@ -30,12 +30,14 @@ known_crc32 = [
 ]
 
 [recompiler]
+bios_config = "psxrecomp/bios/SCPH5501.toml"
 seeds = "seeds/ghidra_funcs.txt"
 out_dir = "generated"
 strict = true
 
 [runtime]
-window_title = "Trap_Gunner Recompiled"
+overlay_backend = "gcc"
+window_title = "Trap Gunner Recompiled"
 memcard_dir = "saves"
 overlay_cache = true
 
@@ -45,6 +47,7 @@ aspect_ratio = "4:3"
 
 [controller]
 default_mode = "digital"
+multitap_analog = true
 
 # Online mount gate: digests + track count + optional TOC fingerprint
 # (see docs/NETPLAY.md).
@@ -52,3 +55,4 @@ default_mode = "digital"
 require_cue = true
 required_tracks = 1
 required_disc_fp = "545414d0305792cf9933d5f93213e09465e5558cf7f101114c52454cc940c8e0"
+format_version = 2
