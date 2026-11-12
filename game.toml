@@ -1,0 +1,54 @@
+# Autofilled by tools/new_project_layout/probe_disc.py from your legal dump.
+# Review before shipping. Runtime quirks / overlay seeds still need hand work.
+
+[game]
+name = "Trap_Gunner"
+id = "SLUS-00679"
+players = 2
+exe = "disc/SLUS_006.79"
+disc = "/home/claude/private/inputs/disc-1/Trap Gunner (USA).cue"
+load_address = "0x80010000"
+entry_pc = "0x8009E1BC"
+text_size = "0x000F9800"
+stack_base = "0x801FFFF0"
+
+# Digests are for data Track 01 (first BINARY FILE / TRACK 01).
+[prepare_disc]
+out_dir = "disc"
+bin_name = "Trap Gunner (USA).bin"
+cue_name = "Trap Gunner (USA).cue"
+boot_exe = "SLUS_006.79"
+known_sizes = [708410640]
+known_md5 = [
+  "4acc0cc9bf96dc12623d4bb031caf159",
+]
+known_sha1 = [
+  "258d840cc7cbb8900d76fd7d1ca499b4085ad6e1",
+]
+known_crc32 = [
+  "f6f00f7c",
+]
+
+[recompiler]
+seeds = "seeds/ghidra_funcs.txt"
+out_dir = "generated"
+strict = true
+
+[runtime]
+window_title = "Trap_Gunner Recompiled"
+memcard_dir = "saves"
+overlay_cache = true
+
+[video]
+renderer = "opengl"
+aspect_ratio = "4:3"
+
+[controller]
+default_mode = "digital"
+
+# Online mount gate: digests + track count + optional TOC fingerprint
+# (see docs/NETPLAY.md).
+[netplay]
+require_cue = true
+required_tracks = 1
+required_disc_fp = "545414d0305792cf9933d5f93213e09465e5558cf7f101114c52454cc940c8e0"
