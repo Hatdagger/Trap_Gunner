@@ -43,3 +43,40 @@ Both peers must stay byte-identical, so both run the same modified game:
    predicate that HOLDs the presenter while the displayed buffer belongs to the
    other seat (psx_netplay_local_slot()), so each window only ever shows its
    own player's view.
+
+## Battle frame loop (psxrecomp 060ef0ab build, 2P VS MAN, DEPOT)
+
+Main loop 0x80014C04..0x80014F88 (one iteration = one 30 fps tick):
+
+1. `db = *(s16*)0x8013855C` -> gp+0x934; packet buffer select 0x800A4D68.
+2. ClearOTagR (0x800A4AF8) on 4 ordering tables, entry stride 0x14 by db:
+   A 0x80119948, B 0x80119970, C 0x80119998, D 0x80119A10.
+3. Task loop 0x8001571C: 18 slots at 0x80119AD8 (stride 12: fn +0, flags +5,
+   bit 2 = run). Then object list 0x80015BF0 (head gp+0x944, fn at +8, next +4).
+4. DrawSync(0) 0x8009FED4, then **VSync(gp+1) at 0x80014CCC** (gp+1 = 2).
+5. SetDispMask(1) 0x8009FB58, **flip 0x800A3E88** (PutDispEnv from per-buffer
+   table 0x801384C0, frame counter 0x80138558, toggles db).
+6. Clear colour 0x800A3850, then DrawOTag (0x800A4AC8) of A, B, C, D
+   (with small text draws 0x800A3B68/0x800A3C58 in between).
+
+So at the VSync entry of tick n+1, tick n+1's logic is done and its OTs are
+built but not drawn, while frame n is complete in the back buffer and is shown
+by the next flip: render-pass flip mode **PENDING**.
+
+Heavy per-tick work: task 10 (0x8003C638, map) and task 11 (0x8003EA34,
+objects/characters), ~1000 calls each.
+
+## Cameras (libgs)
+
+`GsSetRefView2` = 0x800A4D88. Two GsRVIEW2 views, set alternately while each
+split half is drawn:
+
+| View | GsRVIEW2 | super (GsCOORDINATE2) |
+|---|---|---|
+| P1 | 0x80119830 | 0x801197E0 |
+| P2 | 0x801198E4 | 0x80119894 |
+
+Both views: vp = (0, 0, -10000), vr = 0, rz = 0; the camera follows its player
+through the super coordinate's translation (coord.t at +0x18), with the same
+fixed rotation matrix. GsSetProjection-like call 0x800A4A98 (0xA10/0xA60 for
+the map, 0x400/0x400 for objects).
