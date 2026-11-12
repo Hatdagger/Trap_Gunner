@@ -137,7 +137,15 @@ int replay_pass(CPUState* cpu, void*, uint32_t alpha_q16) {
     const uint32_t db = psx_mod_read_byte(GP + 0x934) & 1;
     call(cpu, GsSetWorkBase, rd(WorkBases + 4 * db));
     for (uint32_t ot : OTs) call(cpu, ClearOT, 0, 0, ot + 0x14 * db);
-    for (uint32_t t : DrawTasks) {
+    uint32_t tasks[18], ntasks = 0;
+    if (const char* e = std::getenv("TG_DRAW_TASKS")) {        // test: comma list
+        for (const char* p = e; *p && ntasks < 18; ) {
+            tasks[ntasks++] = uint32_t(std::strtoul(p, const_cast<char**>(&p), 10));
+            if (*p == ',') ++p;
+        }
+    } else for (uint32_t t : DrawTasks) tasks[ntasks++] = t;
+    for (uint32_t k = 0; k < ntasks; ++k) {
+        const uint32_t t = tasks[k];
         const uint32_t slot = TaskTable + TaskStride * t;
         if (!(psx_mod_read_byte(slot + 5) & 4) || !rd(slot)) continue;
         psx_mod_write_word(GP + 0x93C, slot);

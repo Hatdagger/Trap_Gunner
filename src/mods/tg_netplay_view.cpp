@@ -35,7 +35,10 @@ constexpr uint32_t TaskTable = 0x80119AD8, TaskStride = 12;
 constexpr uint32_t GsSetWorkBase = 0x800A4D68, WorkBases = 0x801093A0;
 constexpr uint32_t ClearOT = 0x800A4AF8, DrawSync = 0x8009FED4;
 constexpr uint32_t OTs[4] = {0x80119948, 0x80119970, 0x80119998, 0x80119A10};
-constexpr uint32_t DrawTasks[] = {6, 10, 11, 12, 13, 14};
+// Task 3 (0x80059168, player update) builds the trap placement / search area
+// preview of the view player, so the own view runs it too (in the sandbox:
+// its logic is discarded with everything else; the image may lead by a tick).
+constexpr uint32_t DrawTasks[] = {3, 6, 10, 11, 12, 13, 14};
 constexpr uint32_t SubmitStart = 0x80014CEC, SubmitEnd = 0x80014F48;
 
 uint32_t rd(uint32_t a) { return psx_mod_read_word(a); }

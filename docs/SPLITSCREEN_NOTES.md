@@ -194,3 +194,12 @@ record +0x9CD. A netplay filter wraps both routines: the mask holds only the
 view player (0x80108A9C) during the call and is restored afterwards. Verified
 (rollback, 0 desync): player 1 window trap + 5 shots, player 2 window its own
 trap after R1 and 4 shots after firing three of 7; scope box works.
+
+### Trap placement preview in the own view (v0.0.6)
+
+Square (Trap) shows the placement area, Triangle (Search) the search area.
+Task 3 (0x80059168, player update) builds that preview for the view player,
+so the own view now runs task 3 before the draw tasks (in the sandbox; its
+logic is discarded, the image may lead by up to one tick). Running tasks 0, 1,
+7, 8, 9, 15, 16 in a pass hit the watchdog: never replay those.
+Verified (rollback, 0 desync): each window shows only its own player's preview.
