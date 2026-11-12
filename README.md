@@ -47,6 +47,13 @@ shares the portable toolchain used by per-title launchers, and automates
 BIOS/ROM/save plumbing so you are not stuck repeating each game’s wizard by hand.
 <!-- /retcomm-readme-launcher -->
 
+## System menu
+
+The launcher opens on a controller-driven menu styled after the game's own
+SYSTEM OPTIONS screen (main, settings, mods and network pages), finds the
+disc image beside the executable by itself, and gives player 1 any connected
+controller. See [docs/LAUNCHER.md](docs/LAUNCHER.md).
+
 ## Diagnostic mode
 
 If the game crashes, freezes, or misbehaves, switch to the diagnostic build
