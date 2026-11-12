@@ -1,6 +1,8 @@
 /* Trap Gunner high frame rate (work in progress).
  *
- * Stage 1: probe. At the battle loop's VSync (0x800BD578 called from
+ * Default: at the battle loop's VSync, redraw in-between frames (replay_pass)
+ * with blended player positions and camera anchors.
+ * TG_PROBE=1 (diagnostic): at the battle loop's VSync (0x800BD578 called from
  * 0x80014CCC) run one task of the game's task table inside a discarded
  * render pass and count which RAM pages it changes. Tells us which tasks
  * only draw (safe to replay with blended state) and which also run logic.
@@ -142,7 +144,7 @@ int replay_pass(CPUState* cpu, void*, uint32_t alpha_q16) {
 }
 
 void on_vsync(CPUState* cpu, uint32_t) {
-    if (std::getenv("TG_REPLAY")) {
+    if (!std::getenv("TG_PROBE")) {   // default: in-between frames; TG_PROBE=1 runs the task probe
         if (g_psx_render_pass_active || cpu->gpr[31] != LoopVSyncRet) return;
         prev = cur; capture(cur);
         uint32_t phases[8];
