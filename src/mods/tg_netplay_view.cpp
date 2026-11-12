@@ -116,6 +116,14 @@ void on_set_cam_state(CPUState* cpu, uint32_t) {
     psx_mod_counter_add("tg.np.cam_centred", 1);
 }
 
+// The battle's drawing tasks are active (flag bit 2 at slot+5). When a round
+// ends the game parks them (flag 0x01) and draws the result screens with
+// task 7 instead; a redraw then would replay nothing and leave the rect black.
+bool battle_drawing() {
+    const uint32_t slot = TaskTable + TaskStride * 11;   // map and objects
+    return (rb(slot + 5) & 4) && rd(slot);
+}
+
 int draw_own_view(CPUState* cpu, void* user, uint32_t) {
     const int seat = *static_cast<int*>(user);
     wb(ViewPlayers, uint8_t(seat));
@@ -144,6 +152,7 @@ void on_vsync(CPUState* cpu, uint32_t) {
     if (!g_psx_render_pass_active) in_hud_wrap = 0;   // a rolled-back pass can leave it set
     if (g_psx_render_pass_active || cpu->gpr[31] != LoopVSyncRet) return;
     if (rb(LayoutByte) != 0 || !two_player_battle()) return;
+    if (!battle_drawing()) { psx_mod_counter_add("tg.np.result_screen", 1); return; }
     static int seat;
     seat = psx_netplay_local_slot();
     if (seat <= 0 || seat > 1) return;      // player 1's view is the shared frame

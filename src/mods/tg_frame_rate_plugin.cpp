@@ -169,6 +169,16 @@ int replay_pass(CPUState* cpu, void*, uint32_t alpha_q16) {
 void on_vsync(CPUState* cpu, uint32_t) {
     if (!std::getenv("TG_PROBE")) {   // default: in-between frames; TG_PROBE=1 runs the task probe
         if (g_psx_render_pass_active || cpu->gpr[31] != LoopVSyncRet) return;
+        // Round over: the game parks the battle's drawing tasks (task 11 is
+        // the map and objects) and draws the result screens itself. A replay
+        // would draw nothing, so in-between frames would come out black.
+        {
+            const uint32_t slot = TaskTable + TaskStride * 11;
+            if (!(psx_mod_read_byte(slot + 5) & 4) || !rd(slot)) {
+                psx_mod_counter_add("tg.fr.result_screen", 1);
+                return;
+            }
+        }
         prev = cur; capture(cur);
         uint32_t phases[8];
         static const uint32_t shown_after = std::getenv("TG_D") ? uint32_t(std::atoi(std::getenv("TG_D"))) : 1;

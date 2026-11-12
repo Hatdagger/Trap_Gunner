@@ -213,3 +213,22 @@ toward the opponent), CPU camera state 2 (fixed offset (-100, -384, 0),
 centred). Online both players are seen, so a netplay entry hook on the setter
 turns states 3 and 4 into 2 in a WIDE 2-human battle. Verified: both cameras
 state 2 and centred through movement, rollback, 0 desync.
+
+## Round end (online own view)
+
+When a round ends (TIME OVER / KO, then the result and winner's comment
+screens) the game keeps running the battle loop (mode 9, same VSync return)
+but parks tasks 2-15 (flag byte slot+5 goes from 0x04 to 0x01) except task 7,
+which draws the result screens. The own-view redraw (and a 60fps in-between
+replay) would then run no drawing tasks and leave the rect black, so both
+skip while task 11 (map and objects) is parked: player 2 sees the shared
+result screens.
+
+Test handles found on the way: round timer u16 at 0x801093D8 (30 Hz ticks;
+write a small value on both peers to end a round quickly), player life s16 at
+player record + 0x988 (max at +0x98A).
+
+Known gap: player 2's own view does not show the round banner (TIME OVER,
+DRAWN GAME, YOU WIN), the stage name and clock, or the trap icon cluster.
+Adding task 7, the object list (0x80015BF0) or the remaining tasks to the
+redraw does not bring them back, and the display mask gp+0x8 is already 3.
