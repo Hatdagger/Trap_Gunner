@@ -179,3 +179,15 @@ Implementation (game-owned netplay hooks, inactive offline):
 Verified with two local peers (LAN CLI): delay-sync and rollback, VS MAN on
 DEPOT, both players moving: 0 desync, 751 / 646 own views, 0 aborts, 0 device
 reads. present_shot shows each window with its own player's WIDE view.
+
+### Fix: overlapping HUD panels online (v0.0.4)
+
+WIDE submit path (gp+0xE = 0, 0x80014DA0): draws the HUD panel OT of player
+0x80108A9C at offset (256, 144), then, if that player's human flag
+(0x80108A80[0x80108A9D]) is set, the other player's panel at (308, 40)
+(DrawOTag call 0x80014F0C, ra 0x80014F14). Single-player WIDE never draws the
+second panel (the other player is the CPU). Online both are human, so the two
+panels overlapped. A netplay filter on DrawOTag (0x800A4AC8) consumes that
+call in a WIDE 2-human battle; every peer does the same (state stays
+identical) and the own view skips the opponent's panel the same way.
+Verified: rollback, 0 desync; each window shows only its own panel.

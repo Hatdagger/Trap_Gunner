@@ -30,8 +30,8 @@ known_crc32 = [
 ]
 
 [recompiler]
-# Title plugin hooks (src/mods): battle-loop VSync; HUD TIM loader (netplay WIDE setup).
-mod_function_entry_funcs = ["0x800BD578", "0x800151E0"]
+# Title plugin hooks (src/mods): battle-loop VSync; HUD TIM loader (netplay WIDE setup); DrawOTag (netplay WIDE: other player's HUD panel).
+mod_function_entry_funcs = ["0x800BD578", "0x800151E0", "0x800A4AC8"]
 # Test hook: 2-human battle layout store (0x80028DB4 sb v0, layout).
 mod_instruction_sites = ["0x80028DB4"]
 bios_config = "psxrecomp/bios/OpenBIOS.toml"

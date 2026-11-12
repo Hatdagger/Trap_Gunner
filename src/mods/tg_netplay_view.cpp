@@ -75,6 +75,20 @@ void on_load_tim(CPUState* cpu, uint32_t) {
     psx_mod_counter_add("tg.np.wide_setup", 1);
 }
 
+// WIDE submit (0x80014DA0..): the view player's HUD panel, then, when the
+// other player is human too, the other player's panel (single-player WIDE
+// never draws it: the other player is the CPU). Online both are human and the
+// two panels overlap. Skip the second one; every peer does the same, and the
+// own view (players swapped) skips the opponent's panel the same way.
+constexpr uint32_t DrawOTagFn = 0x800A4AC8, OtherPanelRet = 0x80014F14;
+constexpr uint32_t SplitFlag = GP + 0xE;   // 1 while the split layout is drawn
+int filter_draw_ot(CPUState* cpu, uint32_t) {
+    if (cpu->gpr[31] != OtherPanelRet || rb(LayoutByte) != 0 || rb(SplitFlag) != 0) return 0;
+    if (!two_player_battle()) return 0;
+    psx_mod_counter_add("tg.np.other_panel_skipped", 1);
+    return 1;   // consume: DrawOTag has no return value or RAM side effects
+}
+
 int draw_own_view(CPUState* cpu, void* user, uint32_t) {
     const int seat = *static_cast<int*>(user);
     wb(ViewPlayers, uint8_t(seat));
@@ -121,4 +135,5 @@ void on_vsync(CPUState* cpu, uint32_t) {
 PSX_MOD_CONSTRUCTOR(tg_register_netplay_view) {
     psx_game_register_netplay_function_entry(LoadTim, on_load_tim);
     psx_game_register_netplay_function_entry(VSyncFn, on_vsync);
+    psx_game_register_netplay_function_filter(DrawOTagFn, filter_draw_ot);
 }
