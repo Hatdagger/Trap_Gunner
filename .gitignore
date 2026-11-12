@@ -86,4 +86,4 @@ starvation_dump.jsonl
 !/disc_probe.json
 
 # Your own disc dump + BIOS (Workbench layout). Never commit.
-/inputs/
+/inputs
