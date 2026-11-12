@@ -30,8 +30,10 @@ known_crc32 = [
 ]
 
 [recompiler]
-# Title plugin hooks (src/mods): battle-loop VSync.
-mod_function_entry_funcs = ["0x800BD578"]
+# Title plugin hooks (src/mods): battle-loop VSync; HUD TIM loader (netplay WIDE setup).
+mod_function_entry_funcs = ["0x800BD578", "0x800151E0"]
+# Test hook: 2-human battle layout store (0x80028DB4 sb v0, layout).
+mod_instruction_sites = ["0x80028DB4"]
 bios_config = "psxrecomp/bios/OpenBIOS.toml"
 seeds = "seeds/ghidra_funcs.txt"
 out_dir = "generated"

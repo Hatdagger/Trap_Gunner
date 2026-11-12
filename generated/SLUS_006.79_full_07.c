@@ -5116,8 +5116,11 @@ block_80028DA4:
 #ifdef PSX_ENABLE_BLOCK_CYCLES
     psx_cyc_step(cpu, 0x6u);
 #endif
-    { uint32_t _pgxa = cpu->gpr[1] + -30082; g_debug_last_store_pc = 0x80028DB4u; psx_store_cycle_barrier(); cpu->write_byte(cpu->gpr[1] + -30082, (uint8_t)cpu->gpr[2]);
+psx_mod_instruction(cpu, 0x80028DB4u, 0xA0228A7Eu);
+    { uint32_t _mod_ea = psx_mod_memory_address(cpu, 0x80028DB4u, 0xA0228A7Eu, (uint32_t)(cpu->gpr[1] + -30082));
+    { uint32_t _pgxa = _mod_ea; g_debug_last_store_pc = 0x80028DB4u; psx_store_cycle_barrier(); cpu->write_byte(_mod_ea, (uint8_t)cpu->gpr[2]);
     PGXP_STORE(0xA0228A7Eu, _pgxa, cpu->gpr[2]); }  /* 0x80028DB4: 0xA0228A7E */
+    }
 #ifdef PSX_COSIM
     cosim_instr(0x80028DB4u);
 #endif

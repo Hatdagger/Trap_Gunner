@@ -156,3 +156,26 @@ world draws in the wide layout and the WIDE top HUD bar appears, but split-HUD
 elements are still drawn and the seat swap has no effect yet (both seats show
 the same image). Next: find what else the battle setup derives from the layout
 (0x80028D44..: HUD state per layout) and the real per-view player index.
+
+## Online per-player WIDE: implemented (src/mods/tg_netplay_view.cpp)
+
+Findings: in a 2-human battle started in the WIDE layout (forced at the
+setup store 0x80028DB4 with the test hook `TG_FORCE_WIDE=1`) the game draws
+player 1's full view with the proper WIDE HUD. Swapping the view-player bytes
+0x80108A9C / 0x80108A9D makes the camera and HUD follow player 2. Battle setup
+only uses the layout to pick the HUD TIM; the battle tasks read it when they
+start, so the layout must be WIDE before they are created.
+
+Implementation (game-owned netplay hooks, inactive offline):
+- Entry of the TIM loader 0x800151E0 from battle setup (ra 0x80028EB8 /
+  0x800282C4) with the split TIM: set the layout byte to 0 and load the WIDE
+  TIM instead. Every peer does the same, so the shared frame is the WIDE view
+  of player 1 on all peers.
+- Battle VSync (ra 0x80014CD4), VS battle (0x801093CC = 9) with two humans
+  (gp+0xC = gp+0xD = 1), layout WIDE, local slot 1: `psx_mod_render_local_view`
+  redraws the frame with the view-player bytes swapped (draw tasks + submit
+  span). Slot 0 shows the shared frame.
+
+Verified with two local peers (LAN CLI): delay-sync and rollback, VS MAN on
+DEPOT, both players moving: 0 desync, 751 / 646 own views, 0 aborts, 0 device
+reads. present_shot shows each window with its own player's WIDE view.

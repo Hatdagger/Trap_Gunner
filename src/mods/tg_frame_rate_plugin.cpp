@@ -196,6 +196,12 @@ void on_vsync(CPUState* cpu, uint32_t) {
     probe_task = (probe_task + 1) % TaskCount;
 }
 
+// Test only (TG_FORCE_WIDE=1): make the 2-human battle setup choose the WIDE
+// layout so the game initializes everything it derives from it.
+void on_layout_store(CPUState* cpu, uint32_t) {
+    if (std::getenv("TG_FORCE_WIDE")) cpu->gpr[2] = 0;
+}
+
 void activate() {
     psx_mod_set_frame_interpolation_source(PSX_MOD_FRAME_SOURCE_FLIP);
     psx_mod_set_frame_interpolation_blend(PSX_MOD_FRAME_INTERPOLATION_HOLD);
@@ -207,4 +213,5 @@ void activate() {
 PSX_MOD_CONSTRUCTOR(tg_register_frame_rate_plugin) {
     psx_mod_register_activation_plugin(Plugin, activate);
     psx_mod_register_function_entry_plugin(Plugin, VSyncFn, on_vsync);
+    psx_mod_register_instruction_plugin(Plugin, 0x80028DB4, 0xA0228A7E, on_layout_store);
 }

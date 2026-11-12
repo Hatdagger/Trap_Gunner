@@ -6701,6 +6701,8 @@ void func_800151E0(CPUState* cpu)
         }
     }
     debug_server_log_call_entry(0x800151E0u);
+    if (psx_mod_function_entry(cpu, 0x800151E0u)) return;  /* trusted opt-in game-mod hook */
+    if (psx_mod_try_function_replacement(cpu, 0x800151E0u)) return;
     /* Address: 0x800151E0, Size: 92 bytes, Blocks: 7 */
 
 block_800151E0:
