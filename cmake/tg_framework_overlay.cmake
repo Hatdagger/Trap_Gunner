@@ -12,6 +12,7 @@
 # Overlays:
 #   recomp-ui  launcher_imgui.cpp  the Trap Gunner system menu (ui/tg_menu.inc)
 #   psxrecomp  runtime main.cpp    disc auto-detection beside the executable,
+#                                  the menu kept in Steam Deck Game Mode,
 #                                  player 1 on any connected controller
 
 set(TG_OVERLAY_DIR "${CMAKE_BINARY_DIR}/tg_overlay")
@@ -32,6 +33,13 @@ function(_tg_insert content_var anchor text where)
     else()
         string(REPLACE "${anchor}" "${anchor}${text}" _c "${_c}")
     endif()
+    set(${content_var} "${_c}" PARENT_SCOPE)
+endfunction()
+
+# _tg_replace(<content-var> <anchor> <text>): replace the one match.
+function(_tg_replace content_var anchor text)
+    _tg_insert(${content_var} "${anchor}" "" BEFORE)   # checks it exists, once
+    string(REPLACE "${anchor}" "${text}" _c "${${content_var}}")
     set(${content_var} "${_c}" PARENT_SCOPE)
 endfunction()
 
@@ -220,7 +228,17 @@ static std::filesystem::path tg_discover_game_disc_near(
 
 " BEFORE)
 
-    # 3. Player 1 is whatever game controller is connected, with the keyboard
+    # 3. Steam Deck Game Mode: keep the launcher. The framework boots straight
+    #    into the game there once a disc is set up (the stock launcher needs a
+    #    mouse); Trap Gunner's menu is controller-first, and with the disc
+    #    found beside the executable every run would otherwise skip it. The
+    #    player's own SKIP THIS MENU setting and --no-launcher still apply.
+    _tg_replace(_c "            if (disc_ready && !force_launcher) force_no_launcher = true;"
+"            (void)disc_ready;   /* Trap Gunner overlay: the menu stays in Game Mode */")
+    _tg_replace(_c "\"launcher first (no disc set up yet)\""
+                   "\"launcher first (Trap Gunner menu)\"")
+
+    # 4. Player 1 is whatever game controller is connected, with the keyboard
     #    binds live beside it (pad_sources_for keeps them on for every seat).
     #    A seat saved as \"keyboard\" therefore also picks up a controller, now
     #    or when one is plugged in; with no controller the keyboard alone

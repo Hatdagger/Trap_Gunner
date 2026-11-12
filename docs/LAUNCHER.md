@@ -26,6 +26,10 @@ stock launcher's, reached from these pages and left with their own Back.
   `games` there) for an image whose disc serial is SLUS-00679 and uses it.
   A `.cue` or `.chd` is preferred over a bare image. `--disc` is never
   overridden.
+* **Steam Deck Game Mode.** The framework normally skips the launcher in
+  Game Mode once a disc is set up, because its stock pages need a mouse.
+  Trap Gunner's menu is controller-first, so it stays; SKIP THIS MENU in
+  Settings (or `--no-launcher`) still boots straight into the game.
 * **Player 1 controller.** A seat set to the keyboard also takes whatever game
   controller is connected, now or when one is plugged in; the keyboard keeps
   working beside it. Player 2 keeps its own setting.
