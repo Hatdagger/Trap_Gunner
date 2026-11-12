@@ -34,9 +34,11 @@ std::set<std::string> names;
 const char* intern(const char* s) { return names.insert(s).first->c_str(); }
 uint32_t probe_task = 0, hook_calls = 0;
 
-uint32_t call(CPUState* cpu, uint32_t fn) {
+uint32_t call(CPUState* cpu, uint32_t fn, uint32_t a0 = 0, uint32_t a1 = 0,
+              uint32_t a2 = 0, uint32_t a3 = 0) {
     const CPUState saved = *cpu;
     cpu->pc = 0;
+    cpu->gpr[4] = a0; cpu->gpr[5] = a1; cpu->gpr[6] = a2; cpu->gpr[7] = a3;
     psx_dispatch_call(cpu, fn, saved.gpr[31]);
     const uint32_t r = cpu->gpr[2];
     *cpu = saved;
@@ -76,7 +78,57 @@ int probe_pass(CPUState* cpu, void*, uint32_t) {
     return 0;   // discard: this pass only measures
 }
 
+// Stage 2a: redraw the frame from the current state with the game's draw
+// tasks (no blending yet) to check the replay reproduces the real image.
+constexpr uint32_t GsSetWorkBase = 0x800A4D68, WorkBases = 0x801093A0;
+constexpr uint32_t ClearOT = 0x800A4AF8, DrawOT = 0x800A4AC8, DrawSync = 0x8009FED4;
+constexpr uint32_t SetBg = 0x800A3850, ObjectList = 0x80015BF0;
+constexpr uint32_t OTs[4] = {0x80119948, 0x80119970, 0x80119998, 0x80119A10};
+constexpr uint32_t DrawTasks[] = {6, 10, 11, 12, 13, 14};
+constexpr uint32_t SubmitStart = 0x80014CEC, SubmitEnd = 0x80014F48;
+
+int replay_pass(CPUState* cpu, void*, uint32_t) {
+    const uint32_t db = psx_mod_read_byte(GP + 0x934) & 1;
+    call(cpu, GsSetWorkBase, rd(WorkBases + 4 * db));
+    for (uint32_t ot : OTs) call(cpu, ClearOT, 0, 0, ot + 0x14 * db);
+    for (uint32_t t : DrawTasks) {
+        const uint32_t slot = TaskTable + TaskStride * t;
+        if (!(psx_mod_read_byte(slot + 5) & 4) || !rd(slot)) continue;
+        psx_mod_write_word(GP + 0x93C, slot);
+        call(cpu, rd(slot));
+    }
+    if (std::getenv("TG_REPLAY_OBJECTS")) call(cpu, ObjectList);
+    // Submit exactly as the battle loop does after its flip: background
+    // colour, then the four OTs with the per-view offset/clip set between
+    // them (0x80014CEC..0x80014F48). Registers as the loop holds them.
+    const CPUState saved = *cpu;
+    cpu->gpr[17] = OTs[1]; cpu->gpr[18] = OTs[2];
+    cpu->gpr[19] = OTs[0]; cpu->gpr[20] = OTs[3];
+    cpu->gpr[28] = GP;
+    const int ok = psx_mod_run_guest_span(cpu, SubmitStart, SubmitEnd);
+    *cpu = saved;
+    if (!ok) { psx_mod_counter_add("tg.fr.submit_span_failed", 1); return 0; }
+    call(cpu, DrawSync, 0);
+    return 1;
+}
+
 void on_vsync(CPUState* cpu, uint32_t) {
+    if (std::getenv("TG_REPLAY")) {
+        if (g_psx_render_pass_active || cpu->gpr[31] != LoopVSyncRet) return;
+        uint32_t phases[8];
+        const uint32_t n = psx_mod_render_pass_plan(2, 0, phases, 8);
+        if (!n) { psx_mod_counter_add("tg.fr.plan_empty", 1); return; }
+        const uint32_t db = rh(DbIndex) & 1;
+        PSXModRenderPass rect{};
+        rect.struct_size = sizeof rect;
+        rect.x = rh(DispX + 2 * db); rect.y = rh(DispY + 2 * db); rect.w = 512; rect.h = 240;
+        for (uint32_t i = 0; i < n; ++i) {
+            rect.alpha_q16 = phases[i];
+            psx_mod_counter_add(psx_mod_render_pass(cpu, &rect, replay_pass, nullptr)
+                                ? "tg.fr.passes" : "tg.fr.pass_failed", 1);
+        }
+        return;
+    }
     if (g_psx_render_pass_active || cpu->gpr[31] != LoopVSyncRet) return;
     if (++hook_calls % 15) return;
     uint32_t phases[8];

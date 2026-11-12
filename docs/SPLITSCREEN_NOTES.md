@@ -101,3 +101,26 @@ the draw counter gp+0xA74 (blink phase for traps/markers: 0x8003CCF0 /6,
 0x8003CF58 /4). Map and objects therefore only draw; their RAM writes are
 libgs caches and packets, so they can be replayed in a pass with blended
 camera / character coordinates.
+
+## Stage 2a: unblended redraw works
+
+`replay_pass` (env `TG_REPLAY=1` while the package is enabled) redraws the
+frame inside a render pass from the current (tick n+1) state:
+
+1. `GsSetWorkBase` 0x800A4D68 with the per-buffer base table 0x801093A0[db]
+   (db = gp+0x934); ClearOTagR the four OTs.
+2. Run draw tasks 6, 10, 11, 12, 13, 14 (gp+0x93C = slot, as the dispatcher).
+3. Replay the battle loop's own submit span 0x80014CEC..0x80014F48 with
+   s1 = OT B, s2 = OT C, s3 = OT A, s4 = OT D: background colour, then the
+   four OTs with per-view draw offset/clip between them (0x800A3B68 offset,
+   0x800A3C58 clip RECT): view 1 centre (184, 60), view 2 (184, 180), HUD
+   (256, 120).
+4. DrawSync.
+
+Result (render_pass_dump): both halves, both characters and the HUD match the
+game's frame layout; passes 10/10, aborts 0, span failures 0. Next: snapshot
+moving state each tick and blend it before step 2.
+
+Movement probe (P1 holding right): camera anchor 0x80119894 coord.t.z follows
+the moving character (+7/tick); bone work matrices from 0x80125234 (stride
+0x50) carry world positions; more decoding of the player object needed.
