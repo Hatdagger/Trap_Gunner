@@ -30,6 +30,8 @@ known_crc32 = [
 ]
 
 [recompiler]
+# Title plugin hooks (src/mods): battle-loop VSync.
+mod_function_entry_funcs = ["0x800BD578"]
 bios_config = "psxrecomp/bios/SCPH5501.toml"
 seeds = "seeds/ghidra_funcs.txt"
 out_dir = "generated"

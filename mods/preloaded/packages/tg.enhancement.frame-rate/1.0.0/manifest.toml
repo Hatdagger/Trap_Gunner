@@ -1,0 +1,26 @@
+format_version = 5
+id = "tg.enhancement.frame-rate"
+version = "1.0.0"
+name = "Trap Gunner High Frame Rate"
+author = "Hatdagger"
+description = "Redraws battles between the game's own frames with characters and cameras placed part of the way to their next position. Game logic, timers and audio keep their stock cadence."
+resolver = "declarative"
+save_compatibility = "shared"
+
+[[target]]
+game_id = "SLUS-00679"
+
+# Presentation only: the game simulates at its stock rate. Extra frames are
+# drawn by the game's own draw code inside sandboxed render passes that are
+# rolled back afterwards (psxrecomp docs/RENDER_PASSES.md).
+[[feature]]
+id = "frame-rate"
+name = "High Frame Rate"
+description = "Draws true in-between frames during battles. Requires the OpenGL renderer."
+group = "Display"
+default_enabled = false
+
+[[plugin]]
+feature = "frame-rate"
+id = "tg.frame-rate"
+format_version = 2

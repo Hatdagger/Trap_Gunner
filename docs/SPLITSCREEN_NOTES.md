@@ -80,3 +80,24 @@ Both views: vp = (0, 0, -10000), vr = 0, rz = 0; the camera follows its player
 through the super coordinate's translation (coord.t at +0x18), with the same
 fixed rotation matrix. GsSetProjection-like call 0x800A4A98 (0xA10/0xA60 for
 the map, 0x400/0x400 for objects).
+
+## Which tasks only draw (render-pass probe)
+
+`src/mods/tg_frame_rate_plugin.cpp` (stage 1) runs one task per sample inside
+a discarded render pass at the battle VSync and counts changed RAM per 4 KiB
+page. Results (2P DEPOT, one sample each):
+
+| Task | Fn | Writes besides stack / gp / packet area |
+|---|---|---|
+| 0, 1, 7, 8, 9, 15, 16 | various | none this tick |
+| 6 | 0x8003A82C | 0x8015A000 / 0x8015D000 (80 words each) |
+| 10 map | 0x8003C638 | libgs caches 0x80102000, 0x8010D000-E000, 0x80115000-6000, 0x80138000; packets 0x801E7000-0x801EC000 |
+| 11 objects | 0x8003EA34 | GsCOORDINATE2 work matrices from 0x80125234 (stride 0x50), libgs packet pointers 0x80109F00 / 0x80112000, packets 0x801B7000-0x801D5938, draw counter gp+0xA74 |
+| 12, 13, 14 | 0x800368C8, 0x8005EA10, 0x80037494 | packets only |
+| 2-5, 17 | | not sampled (17 waits on VSync inside the task: never run it in a pass) |
+
+Task 11 draws per view with 0x8003C8B4(player, view) twice, then increments
+the draw counter gp+0xA74 (blink phase for traps/markers: 0x8003CCF0 /6,
+0x8003CF58 /4). Map and objects therefore only draw; their RAM writes are
+libgs caches and packets, so they can be replayed in a pass with blended
+camera / character coordinates.
