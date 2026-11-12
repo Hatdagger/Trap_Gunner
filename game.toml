@@ -32,12 +32,14 @@ known_crc32 = [
 [recompiler]
 # Title plugin hooks (src/mods): battle-loop VSync.
 mod_function_entry_funcs = ["0x800BD578"]
-bios_config = "psxrecomp/bios/SCPH5501.toml"
+bios_config = "psxrecomp/bios/OpenBIOS.toml"
 seeds = "seeds/ghidra_funcs.txt"
 out_dir = "generated"
 strict = true
 
 [runtime]
+# Ship and default to OpenBIOS (MIT, bundled); players may still pick their own dump.
+openbios = true
 overlay_backend = "gcc"
 window_title = "Trap Gunner Recompiled"
 memcard_dir = "saves"
