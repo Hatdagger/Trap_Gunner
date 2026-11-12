@@ -75,18 +75,26 @@ void on_load_tim(CPUState* cpu, uint32_t) {
     psx_mod_counter_add("tg.np.wide_setup", 1);
 }
 
-// WIDE submit (0x80014DA0..): the view player's HUD panel, then, when the
-// other player is human too, the other player's panel (single-player WIDE
-// never draws it: the other player is the CPU). Online both are human and the
-// two panels overlap. Skip the second one; every peer does the same, and the
-// own view (players swapped) skips the opponent's panel the same way.
-constexpr uint32_t DrawOTagFn = 0x800A4AC8, OtherPanelRet = 0x80014F14;
-constexpr uint32_t SplitFlag = GP + 0xE;   // 1 while the split layout is drawn
-int filter_draw_ot(CPUState* cpu, uint32_t) {
-    if (cpu->gpr[31] != OtherPanelRet || rb(LayoutByte) != 0 || rb(SplitFlag) != 0) return 0;
-    if (!two_player_battle()) return 0;
-    psx_mod_counter_add("tg.np.other_panel_skipped", 1);
-    return 1;   // consume: DrawOTag has no return value or RAM side effects
+// HUD routines of task 13 draw a panel for every player in the HUD player
+// mask gp+0x8 (bit n = player n; 3 in a 2-human battle): 0x8005CA7C is the
+// current-trap and ammo panel, 0x8005D0D4 the next HUD routine. In WIDE all
+// panels land in the same place, so online they overlapped. While either
+// routine runs, the mask holds only the view player (0x80108A9C) and is put
+// back afterwards: the shared frame shows player 1's panel, the own view
+// (players swapped) its own player's. Every peer does the same.
+constexpr uint32_t HudMask = GP + 0x8;
+constexpr uint32_t HudPanelFns[] = {0x8005CA7C, 0x8005D0D4};
+int in_hud_wrap = 0;
+int wrap_hud(CPUState* cpu, uint32_t address) {
+    if (in_hud_wrap || rb(LayoutByte) != 0 || !two_player_battle()) return 0;
+    const uint8_t saved = rb(HudMask);
+    wb(HudMask, uint8_t(1u << (rb(ViewPlayers) & 1u)));
+    in_hud_wrap = 1;
+    psx_dispatch_call(cpu, address, cpu->gpr[31]);
+    in_hud_wrap = 0;
+    wb(HudMask, saved);
+    psx_mod_counter_add("tg.np.hud_wrapped", 1);
+    return 1;   // the call ran with the original body
 }
 
 int draw_own_view(CPUState* cpu, void* user, uint32_t) {
@@ -114,6 +122,7 @@ int draw_own_view(CPUState* cpu, void* user, uint32_t) {
 }
 
 void on_vsync(CPUState* cpu, uint32_t) {
+    if (!g_psx_render_pass_active) in_hud_wrap = 0;   // a rolled-back pass can leave it set
     if (g_psx_render_pass_active || cpu->gpr[31] != LoopVSyncRet) return;
     if (rb(LayoutByte) != 0 || !two_player_battle()) return;
     static int seat;
@@ -135,5 +144,5 @@ void on_vsync(CPUState* cpu, uint32_t) {
 PSX_MOD_CONSTRUCTOR(tg_register_netplay_view) {
     psx_game_register_netplay_function_entry(LoadTim, on_load_tim);
     psx_game_register_netplay_function_entry(VSyncFn, on_vsync);
-    psx_game_register_netplay_function_filter(DrawOTagFn, filter_draw_ot);
+    for (uint32_t fn : HudPanelFns) psx_game_register_netplay_function_filter(fn, wrap_hud);
 }
