@@ -529,10 +529,14 @@ static const Setting kSettings[] = {
     { "SKIP THIS MENU", "Start the game directly next time, without this menu.",
       always, [](LauncherModel* m) -> const char* { return m->s.skip_launcher ? "On" : "Off"; },
       [](LauncherModel* m, int) { launcher_model_request_skip_toggle(m); } },
-    { "BUTTON LAYOUT", "Choose the controllers for player 1 and player 2 and "
-                       "change which button does what.",
+    { "PLAYER 1 BUTTONS", "Choose player 1's controller and change which "
+                          "button does what.",
       always, [](LauncherModel*) -> const char* { return ">"; },
       [](LauncherModel* m, int dir) { if (dir >= 0) launcher_model_open_config(m, 0); } },
+    { "PLAYER 2 BUTTONS", "Choose player 2's controller and change which "
+                          "button does what.",
+      always, [](LauncherModel*) -> const char* { return ">"; },
+      [](LauncherModel* m, int dir) { if (dir >= 0) launcher_model_open_config(m, 1); } },
     { "ALL SETTINGS", "The full settings page: renderer, filters, hotkeys and "
                       "everything else. Easiest with a mouse.",
       always, [](LauncherModel*) -> const char* { return ">"; },

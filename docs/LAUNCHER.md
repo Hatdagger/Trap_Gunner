@@ -10,7 +10,7 @@ Start starts the game (or the match, in a room you host).
 | Page | What is on it |
 | --- | --- |
 | Main | START GAME, NETWORK PLAY, SETTINGS, MODS, EXIT; disc, controller, memory card, mods and display status |
-| Settings | Aspect, fullscreen, window size, resolution, texture filter, vsync, volume, skip this menu, button layout, all settings, restore defaults |
+| Settings | Aspect, fullscreen, window size, resolution, texture filter, vsync, volume, skip this menu, player 1 buttons, player 2 buttons, all settings, restore defaults |
 | Mods | Every installed mod as an ON/OFF line; packages dropped in `mods/new` beside the game, ready to install from the controller; browse, open the folder, full mods page; X removes a mod |
 | Network play | LAN or online, and the name other players see (left/right picks one of the cast, A types one) |
 | Room list | Host a room with one press, join a listed room, join by address (dialled a number at a time), host with a name or password, full network page |
