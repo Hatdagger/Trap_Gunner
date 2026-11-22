@@ -54,6 +54,7 @@ psxrecomp_add_game_runtime(psx-runtime
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/tg_framework_overlay.cmake")
 tg_overlay_launcher_menu(psx-runtime)
 tg_overlay_runtime_defaults(psx-runtime)
+tg_overlay_dual_screen(psx-runtime)
 
 # Stage runtime configs next to the exe for direct build/ launches. Only copy
 # files that exist — never fail POST_BUILD when game_options.toml is absent.

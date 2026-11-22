@@ -1,0 +1,26 @@
+format_version = 5
+id = "tg.enhancement.dual-screen"
+version = "1.0.0"
+name = "Trap Gunner Dual Screen"
+author = "Hatdagger"
+description = "Local versus on one PC with a monitor per player. A second window shows player 2's own full-screen WIDE view (the CPU opponent's view in a 1-player fight); menus are mirrored. No network: both views are drawn from the same running game."
+resolver = "declarative"
+save_compatibility = "shared"
+
+[[target]]
+game_id = "SLUS-00679"
+
+# Presentation only: the game runs as normal; each battle frame is drawn a
+# second time for the other player inside the framework's reversible local
+# view sandbox (psx_mod_render_local_pair).
+[[feature]]
+id = "dual-screen"
+name = "Dual Screen"
+description = "Opens a second window for player 2 (double-click it for fullscreen). Requires the OpenGL renderer. Turns the High Frame Rate mod's in-between frames off while it is on."
+group = "Display"
+default_enabled = false
+
+[[plugin]]
+feature = "dual-screen"
+id = "tg.dual-screen"
+format_version = 2

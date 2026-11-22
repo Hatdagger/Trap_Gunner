@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 
+extern "C" int tg_dual_screen_open(void);   // ui/tg_dual_main.inc
+
 namespace {
 constexpr const char* Plugin = "tg.frame-rate";
 constexpr uint32_t VSyncFn = 0x800BD578, LoopVSyncRet = 0x80014CD4;
@@ -167,6 +169,7 @@ int replay_pass(CPUState* cpu, void*, uint32_t alpha_q16) {
 }
 
 void on_vsync(CPUState* cpu, uint32_t) {
+    if (tg_dual_screen_open()) return;   // dual screen draws each frame twice instead
     if (!std::getenv("TG_PROBE")) {   // default: in-between frames; TG_PROBE=1 runs the task probe
         if (g_psx_render_pass_active || cpu->gpr[31] != LoopVSyncRet) return;
         // Round over: the game parks the battle's drawing tasks (task 11 is

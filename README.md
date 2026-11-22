@@ -54,6 +54,12 @@ SYSTEM OPTIONS screen (main, settings, mods and network pages), finds the
 disc image beside the executable by itself, and gives player 1 any connected
 controller. See [docs/LAUNCHER.md](docs/LAUNCHER.md).
 
+## Dual screen
+
+Local versus on one PC with a monitor per player: turn on **Dual Screen** in
+the Mods page and a second window shows player 2's own full-screen view. See
+[docs/DUAL_SCREEN.md](docs/DUAL_SCREEN.md).
+
 ## Diagnostic mode
 
 If the game crashes, freezes, or misbehaves, switch to the diagnostic build

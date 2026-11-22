@@ -13,7 +13,11 @@
 #   recomp-ui  launcher_imgui.cpp  the Trap Gunner system menu (ui/tg_menu.inc)
 #   psxrecomp  runtime main.cpp    disc auto-detection beside the executable,
 #                                  the menu kept in Steam Deck Game Mode,
-#                                  player 1 on any connected controller
+#                                  player 1 on any connected controller,
+#                                  the dual screen's second window
+#                                  (ui/tg_dual_main.inc)
+#   psxrecomp  gpu_gl_renderer.c   the dual screen's split of the local pair
+#                                  across two windows (ui/tg_dual_gl.inc)
 
 set(TG_OVERLAY_DIR "${CMAKE_BINARY_DIR}/tg_overlay")
 
@@ -251,9 +255,83 @@ static std::filesystem::path tg_discover_game_disc_near(
         }
 " AFTER)
 
+    # 5. Dual screen: the second window (ui/tg_dual_main.inc), opened and
+    #    closed from the game's event drain on the main thread.
+    _tg_replace(_c [=[static bool drain_host_events() {
+    SDL_Event ev;
+    while (SDL_PollEvent(&ev)) {]=] [=[#include "tg_dual_main.inc"
+static bool drain_host_events() {
+    SDL_Event ev;
+    tg_dual_poll();   /* Trap Gunner dual screen */
+    while (SDL_PollEvent(&ev)) {]=])
+
     set(_out "${TG_OVERLAY_DIR}/psxrecomp/main.cpp")
     file(WRITE "${_out}.tmp" "${_c}")
     configure_file("${_out}.tmp" "${_out}" COPYONLY)   # rewritten only on change
     _tg_swap_source(${target} "${_orig}" "${_out}")
-    message(STATUS "tg overlay: disc auto-detection and player 1 controller default")
+    set_property(SOURCE "${_out}" APPEND PROPERTY OBJECT_DEPENDS
+        "${CMAKE_SOURCE_DIR}/ui/tg_dual_main.inc")
+    message(STATUS "tg overlay: disc auto-detection and player 1 controller default, dual screen window")
+endfunction()
+
+# ---- psxrecomp renderer: the dual screen's second window --------------------
+#
+# The offline local pair normally shows both views side by side in one 8:3
+# window; with a second window set it is split: view 0 in the main window,
+# view 1 in the second, and every other frame copied into the second window
+# as a mirror (ui/tg_dual_gl.inc).
+
+function(tg_overlay_dual_screen target)
+    set(_orig "${PSXRECOMP_ROOT}/runtime/src/gpu_gl_renderer.c")
+    set(TG_OVERLAY_CURRENT "${_orig}")
+    file(READ "${_orig}" _c)
+    string(REPLACE "\r\n" "\n" _c "${_c}")   # a Windows checkout may be CRLF
+
+    # 1. The second window's state and present, before the pair presenters.
+    _tg_insert(_c [=[static void local_pair_present_shared(int *lx, int *ly, int *lw, int *lh) {]=]
+[=[/* ---- Trap Gunner dual screen (overlay: cmake/tg_framework_overlay.cmake) ---- */
+#include "tg_dual_gl.inc"
+/* ---- end Trap Gunner dual screen ---- */
+]=] BEFORE)
+
+    # 2. A frame without a fresh pair: the main window keeps it whole, the
+    #    second window gets the copy.
+    _tg_replace(_c [=[        glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, x, y, w, h);
+    }
+    p_glBindFramebuffer(PSXGL_DRAW_FRAMEBUFFER, 0);]=] [=[        glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, x, y, w, h);
+    }
+    if (tg_dual_active()) {   /* Trap Gunner dual screen: mirror */
+        tg_dual_source(s_local_shared_tex, w, h, 0);
+        return;
+    }
+    p_glBindFramebuffer(PSXGL_DRAW_FRAMEBUFFER, 0);]=])
+
+    # 3. A fresh pair: view 0 alone (4:3) in the main window, view 1 to the
+    #    second window.
+    _tg_replace(_c [=[    const int solo = (mirror == 1 || mirror == 3);]=]
+[=[    const int tg_dual = tg_dual_active();   /* Trap Gunner dual screen */
+    const int solo = (mirror == 1 || mirror == 3) || tg_dual;]=])
+    _tg_insert(_c [=[    if (solo)
+        letterbox_rect_aspect(ww, wh, p->tw[solo_eye], p->th[solo_eye], &lx, &ly, &lw, &lh);]=]
+[=[    if (tg_dual)
+        letterbox_rect_aspect(ww, wh, 4, 3, &lx, &ly, &lw, &lh);
+    else
+]=] BEFORE)
+    _tg_insert(_c [=[    pres_record(GL_PRES_STEREO, p->x, p->y, w, h, lx, ly, lw, lh);]=]
+[=[    if (tg_dual) tg_dual_source(p->tex[1], p->tw[1], p->th[1], 1);
+]=] BEFORE)
+
+    # 4. Every main-window swap shows the second window's frame first.
+    _tg_replace(_c [=[static void gl_swap_with_osd(void) {
+    openxr_present_native();]=] [=[static void gl_swap_with_osd(void) {
+    tg_dual_present();   /* Trap Gunner dual screen */
+    openxr_present_native();]=])
+
+    set(_out "${TG_OVERLAY_DIR}/psxrecomp/gpu_gl_renderer.c")
+    file(WRITE "${_out}.tmp" "${_c}")
+    configure_file("${_out}.tmp" "${_out}" COPYONLY)   # rewritten only on change
+    _tg_swap_source(${target} "${_orig}" "${_out}")
+    set_property(SOURCE "${_out}" APPEND PROPERTY OBJECT_DEPENDS
+        "${CMAKE_SOURCE_DIR}/ui/tg_dual_gl.inc")
+    message(STATUS "tg overlay: dual screen second window in the renderer")
 endfunction()
